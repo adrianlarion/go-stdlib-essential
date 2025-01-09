@@ -390,3 +390,18 @@ func main() {
 	}
 }
 ```
+# encoding/base64
+https://pkg.go.dev/encoding/base64
+
+Encoding/Decoding:
+
+```
+	msg := "hello world"
+	encoded := base64.StdEncoding.EncodeToString([]byte(msg))
+	fmt.Printf("encoded value is %s\n", encoded)
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("decoded value %s\n", decoded)
+```
