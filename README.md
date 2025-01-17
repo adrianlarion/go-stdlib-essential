@@ -405,3 +405,223 @@ Encoding/Decoding:
 	}
 	fmt.Printf("decoded value %s\n", decoded)
 ```
+
+# encoding/binary
+https://pkg.go.dev/encoding/binary
+
+Write binary encoding:
+```
+	var buf bytes.Buffer
+	var pi float64 = math.Pi
+	err := binary.Write(&buf, binary.LittleEndian, pi)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("% x", buf.Bytes())
+```
+
+# encoding/json
+https://pkg.go.dev/encoding/json
+
+Basic marshalling and unmarshalling:
+```
+type Student struct {
+	Name string
+}
+
+func main() {
+	student := Student{"John"}
+	b, err := json.Marshal(student)
+	if err != nil {
+		panic(err)
+	}
+	var newStudent Student
+	err = json.Unmarshal(b, &newStudent)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(newStudent)
+}
+```
+Encoder:
+```
+type Student struct {
+	Name string
+}
+
+func main() {
+	student := Student{"John"}
+	json.NewEncoder(os.Stdout).Encode(student)
+}
+```
+
+Decoder:
+```
+func main() {
+	student := Student{"John"}
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(student)
+	if err != nil {
+		panic(err)
+	}
+	var newStudent Student
+	err = json.NewDecoder(&buf).Decode(&newStudent)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(newStudent)
+}
+```
+
+Decoder that keeps reading a stream of data until EOF:
+```
+func main() {
+
+	const jsonStream = `
+	{"Name": "Ed", "Text": "Knock knock."}
+	{"Name": "Sam", "Text": "Who's there?"}
+	{"Name": "Ed", "Text": "Go fmt."}
+	{"Name": "Sam", "Text": "Go fmt who?"}
+	{"Name": "Ed", "Text": "Go fmt yourself!"}
+`
+	type Message struct {
+		Name, Text string
+	}
+	dec := json.NewDecoder(strings.NewReader(jsonStream))
+
+	for {
+		var m Message
+		if err := dec.Decode(&m); err == io.EOF {
+			break
+		} else if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(m)
+	}
+}
+```
+
+Custom marshal, change value:
+```
+type Student struct {
+	Name string
+}
+
+
+func (s Student) MarshalJSON() ([]byte, error) {
+	type Alias Student
+	alias := Alias(s)
+	alias.Name = fmt.Sprintf("CustomName %s", alias.Name)
+	return json.Marshal(alias)
+}
+
+func main() {
+	s := Student{"John"}
+	b, err := json.Marshal(s)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(b))
+}
+
+```
+
+Custom marshal, return a new struct:
+```
+func (s Student) MarshalJSON() ([]byte, error) {
+	type Alias Student
+	custStruct := struct {
+		LastModified int64 `json:"last_modified"`
+		Student      Alias `json:"student"`
+	}{
+		LastModified: time.Now().Unix(),
+		Student:      Alias(s),
+	}
+
+	return json.Marshal(custStruct)
+}
+
+func main() {
+	s := Student{"John"}
+	b, err := json.Marshal(s)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(b))
+}
+
+```
+
+Custom unmarshal:
+```
+func (s *Student) UnmarshalJSON(b []byte) error {
+	type Alias Student
+	var a Alias
+	err := json.Unmarshal(b, &a)
+	if err != nil {
+		return err
+	}
+	a.Name = "CompletelyNewName"
+	*s = Student(a)
+	return nil
+}
+
+func main() {
+	s := Student{"John"}
+	b, err := json.Marshal(s)
+	if err != nil {
+		panic(err)
+	}
+	var newStudent Student
+	err = json.Unmarshal(b, &newStudent)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(newStudent)
+}
+
+```
+
+Raw message:
+```
+type Student struct {
+	Name     string
+	SomeData json.RawMessage
+}
+
+func main() {
+	var data = `
+		{
+		"Name":"John",
+		"SomeData":42
+		}
+	`
+	b := []byte(data)
+	var student Student
+	json.Unmarshal(b, &student)
+
+	if student.Name == "John" {
+		var someData int64
+		err := json.Unmarshal(student.SomeData, &someData)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(someData)
+	}
+}
+```
+
+Unmarshal into a map[string]any:
+```
+func main() {
+	var data = `
+		{
+		"Name":"John",
+		"SomeData":42
+		}
+	`
+	var m = make(map[string]any)
+	json.Unmarshal([]byte(data), &m)
+	fmt.Println(m)
+}
+```
