@@ -625,3 +625,112 @@ func main() {
 	fmt.Println(m)
 }
 ```
+
+# errors
+https://pkg.go.dev/errors
+https://adrianlarion.com/golang-error-handling-demystified-errors-is-errors-as-errors-unwrap-custom-errors-and-more/
+
+
+Is:
+```
+var ErrMyCustom = errors.New("my custom error")
+
+func main() {
+	err := do()
+	if errors.Is(err, ErrMyCustom) {
+		fmt.Println("we have a custom error")
+	}
+}
+
+func do() error {
+	return ErrMyCustom
+}
+```
+
+Is for wrapped errors (still works even thogh the error is wrapped):
+```
+var ErrMyCustom = errors.New("my custom error")
+
+func main() {
+	err := do()
+	if errors.Is(err, ErrMyCustom) {
+		fmt.Println("we have a custom error")
+	}
+}
+
+func do() error {
+	return fmt.Errorf("additional information and the original err %w", ErrMyCustom)
+}
+```
+
+As:
+```
+type CustomErr struct {
+	ExtraInfo string
+	Err       error
+}
+
+func (c CustomErr) Error() string {
+	return fmt.Sprintf("Extra info is '%s' and original err is %v", c.ExtraInfo, c.Err)
+}
+
+func main() {
+	err := do()
+	var customErr CustomErr
+	if errors.As(err, &customErr) {
+		fmt.Println(" we have a custom error")
+	}
+}
+
+func do() error {
+	customErr := CustomErr{ExtraInfo: "my extra info", Err: errors.New("my original err")}
+	return customErr
+}
+
+```
+
+Join:
+```
+var err1 = errors.New("err1")
+var err2 = errors.New("err2")
+err := errors.Join(err1, err2)
+fmt.Println(err)
+if errors.Is(err, err1) {
+	fmt.Println("we have err1")
+}
+if errors.Is(err, err2) {
+	fmt.Println("we have err2")
+}
+```
+
+# expvar
+https://pkg.go.dev/expvar
+https://sysdig.com/blog/golang-expvar-custom-metrics/
+
+Publish:
+```
+type Metrics struct {
+	Metric1 float64
+	Metric2 float64
+}
+
+func MyMetrics() any {
+	return Metrics{42, 43}
+}
+
+func main() {
+	expvar.Publish("system.metrics", expvar.Func(MyMetrics))
+	http.ListenAndServe(":8080", nil)
+}
+```
+
+More:
+```
+func main() {
+	var fooCount = expvar.NewInt("foo.count")
+	fooCount.Add(1)
+	http.ListenAndServe(":8080", nil)
+	// access http://localhost:8080/debug/vars for the metrics
+
+}
+```
