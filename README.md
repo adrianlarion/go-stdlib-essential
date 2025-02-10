@@ -734,3 +734,632 @@ func main() {
 
 }
 ```
+
+# flag
+https://pkg.go.dev/flag
+
+Parse:
+```
+	var target = flag.String("target", "defaultValue", "medical code")
+	flag.Parse()
+	fmt.Println(*target)
+```
+
+# fmt
+https://pkg.go.dev/fmt
+
+Stringer interface:
+```
+type Student struct {
+	Name  string
+	Money int64
+}
+
+func (s Student) String() string {
+	return fmt.Sprintf("student %s has %v money", s.Name, s.Money)
+}
+
+func main() {
+	s := Student{"john", 42}
+	fmt.Println(s)
+}
+```
+
+More:
+```
+func main() {
+
+	fmt.Println("hello")
+
+	fmt.Printf("%v is the answer", 42)
+
+	s := fmt.Sprintf("%v is the answer", 42)
+	fmt.Println(s)
+
+	err := fmt.Errorf("my error and extra info %v", 42)
+	fmt.Println(err)
+
+	fmt.Fprintln(os.Stdout, "hello")
+
+	var a string
+	_, err = fmt.Scan(&a)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("a is %v", a)
+}
+```
+
+# io
+https://pkg.go.dev/io
+
+Arguably the most important interfaces of Go's stdlib:
+```
+//write to underlying data stream 'p' bytes
+type Writer interface {
+	Write(p []byte) (n int, err error)
+}
+...
+//read from underlying data stream into 'p' bytes
+type Reader interface {
+	Read(p []byte) (n int, err error)
+}
+
+```
+
+Copy to dst writer from src reader:
+```
+	var b bytes.Buffer
+	b.Write([]byte("hello\n"))
+	//copy to dst writer (os.Stdout) from source reader (&b)
+	io.Copy(os.Stdout, &b)
+```
+
+Multi reader:
+```
+	r1 := strings.NewReader("hello ")
+	r2 := strings.NewReader("world\n")
+
+	multi := io.MultiReader(r1, r2)
+	io.Copy(os.Stdout, multi)
+```
+
+Multi writer:
+```
+	var b1 bytes.Buffer
+	var b2 bytes.Buffer
+	w := io.MultiWriter(&b1, &b2)
+	w.Write([]byte("hello world\n"))
+	fmt.Printf("%s", b1.Bytes())
+	fmt.Printf("%s", b2.Bytes())
+```
+
+Pipe:
+```
+	r, w := io.Pipe()
+	go func() {
+		defer w.Close()
+		time.Sleep(3 * time.Second)
+		w.Write([]byte("hello pipe"))
+	}()
+
+	io.Copy(os.Stdout, r)
+```
+
+Read All:
+```
+	r := strings.NewReader("hello world")
+	b, err := io.ReadAll(r)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(b))
+```
+
+Tee reader:
+```
+	r := strings.NewReader("hello world")
+	tr := io.TeeReader(r, os.Stdout)
+	if _, err := io.ReadAll(tr); err != nil {
+		panic(err)
+	}
+```
+
+# log
+https://pkg.go.dev/log
+
+
+Simple println with default logger:
+```
+	log.Println("hello world")
+```
+
+Custom logger:
+```
+	logger := log.New(os.Stdout, "mylogger: ", log.Lshortfile|log.LstdFlags)
+	logger.Println("hello world")
+```
+
+# log/slog
+https://pkg.go.dev/log/slog
+
+
+Default logger info:
+```
+	slog.Info("hello", "count", 3)
+```
+
+Json output:
+```
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger.Info("hello", "count", 3)
+```
+
+With:
+```
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger = logger.With("url", "https://mywebsite.com")
+	logger.Info("hello", "count", 3)
+```
+
+Group:
+```
+	logger := slog.Default().With("id", 42)
+	parserLogger := logger.WithGroup("parser")
+	parserLogger.Info("hello", "id", 43)
+```
+
+# maps
+https://pkg.go.dev/maps
+
+Clone:
+```
+	m := map[string]int{"answer": 42}
+	m2 := maps.Clone(m)
+	fmt.Println(m2)
+```
+
+Copy (appends or overrides existing key/value pairs):
+```
+	m := map[string]int{"answer": 42}
+	m2 := map[string]int{"answer": 0}
+	maps.Copy(m2, m)
+```
+
+Equal:
+```
+	m := map[string]int{"answer": 42}
+	m2 := map[string]int{"answer": 0}
+	eq := maps.Equal(m, m2)
+	fmt.Println(eq)
+```
+
+Delete func:
+```
+	m := map[string]int{"answer": 42, "answer2": 0}
+	maps.DeleteFunc(m, func(k string, v int) bool {
+		return v == 0
+	})
+	fmt.Println(m)
+```
+
+# math/rand/v2
+https://pkg.go.dev/math/rand/v2
+
+
+Rand int:
+```
+	fmt.Println(rand.IntN(10))
+```
+
+Shuffle slice:
+```
+	words := []string{"a", "b", "c"}
+	rand.Shuffle(len(words), func(i, j int) {
+		words[i], words[j] = words[j], words[i]
+	})
+	fmt.Println(words)
+```
+
+# net
+
+Listener:
+```
+func main() {
+	ln, err := net.Listen("tcp", "localhost:8080")
+	if err != nil {
+		panic(err)
+	}
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			panic(err)
+		}
+		go handleConn(conn)
+	}
+}
+
+func handleConn(conn net.Conn) {
+	buf := make([]byte, 4)
+	for {
+		reqLen, err := conn.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				fmt.Println("end of msg")
+				break
+			}
+			panic(err)
+		}
+		fmt.Println("chunk of msg received ", string(buf[:reqLen]))
+	}
+}
+
+```
+
+Dialer:
+```
+func main() {
+	conn, err := net.Dial("tcp", "localhost:8080")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(conn, "hello friend")
+}
+```
+
+# net/http
+https://pkg.go.dev/net/http
+
+
+Make http requests using a new client:
+```
+	tr := &http.Transport{
+	MaxIdleConns:       10,
+	IdleConnTimeout:    30 * time.Second,
+	DisableCompression: true,
+	}
+
+	client := &http.Client{Transport: tr}
+	req, err := http.NewRequest("GET", "https://example.com", nil)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp)
+```
+
+Handle func:
+```
+	http.HandleFunc("/foo", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "hello world")
+	})
+	log.Fatal(http.ListenAndServe(":8080", nil))
+```
+
+# os
+https://pkg.go.dev/os
+
+Get env:
+```
+	res := os.Getenv("PATH")
+	fmt.Println(res)
+```
+
+Read file:
+```
+	data, err := os.ReadFile("f.txt")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(data))
+```
+
+Read dir:
+```
+	files, err := os.ReadDir(".")
+	if err != nil {
+		panic(err)
+	}
+	for _, f := range files {
+		fmt.Println(f.Name())
+	}
+```
+
+Write file:
+```
+	err := os.WriteFile("f.txt", []byte("hello golang"), 0666)
+	if err != nil {
+		panic(err)
+	}
+```
+
+# os/exec
+https://pkg.go.dev/os/exec
+
+Exec command and print output:
+```
+	out, err := exec.Command("ls", "-la").Output()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(out))
+```
+
+# os/signal
+https://pkg.go.dev/os/signal
+
+Wait for interrupt signal:
+```
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	s := <-c
+	fmt.Println("signal received ", s)
+```
+
+# path
+https://pkg.go.dev/path
+
+Join
+```
+	u := path.Join("google.com", "foo")
+	fmt.Println(u)
+```
+
+# path/filepath
+https://pkg.go.dev/path/filepath
+
+```
+	ext := filepath.Ext("index.html")
+	fmt.Println(ext)
+```
+
+# reflect
+https://pkg.go.dev/reflect
+
+Type of:
+```
+	var a int32 = 42
+	fmt.Println(reflect.TypeOf(a))
+```
+
+# regexp
+https://pkg.go.dev/regexp
+
+Match string, find string:
+```
+	var re = regexp.MustCompile("foo.?")
+	fmt.Println(re.MatchString("food"))
+	fmt.Println(re.FindString("fool"))
+```
+
+# slices
+https://pkg.go.dev/slices
+
+More:
+```
+	s := []int{99, 1, 2, 3}
+	fmt.Println(slices.Contains(s, 2))
+	s2 := slices.Clone(s)
+	fmt.Println(s2)
+	slices.Sort(s)
+	fmt.Println(s)
+```
+
+# sort
+https://pkg.go.dev/sort
+
+```
+type Person struct {
+	Salary int
+	Name   string
+}
+
+func main() {
+	staff := []Person{
+		{Salary: 22, Name: "John"},
+		{Salary: 42, Name: "Xavier"},
+		{Salary: 11, Name: "Amos"},
+	}
+	sort.Slice(staff, func(i, j int) bool {
+		return staff[i].Salary < staff[j].Salary
+	})
+	fmt.Println(staff)
+}
+```
+
+# strconv
+https://pkg.go.dev/strconv
+
+String to int:
+```
+	i, err := strconv.Atoi("-42")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(i, reflect.TypeOf(i))
+```
+
+Int to string
+
+```
+	i := 10
+	s := strconv.Itoa(i)
+	fmt.Printf("%T, %v\n", s, s)
+```
+
+Parse float (string to float):
+```
+	fString := "3.14"
+	f, err := strconv.ParseFloat(fString, 64)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%T %v\n", f, f)
+```
+
+Format float (float to string):
+```
+	f := math.Pi
+	fString := strconv.FormatFloat(f, 'f', -1, 64)
+	fmt.Printf("%T, %s\n", fString, fString)
+```
+
+Append converted float string to byte slice:
+```
+	b := []byte("f32:")
+	b = strconv.AppendFloat(b, math.Pi, 'f', -1, 64)
+	fmt.Println(string(b))
+```
+
+Quote string:
+```
+	s := strconv.Quote(`"To Do" list ☺`)
+	fmt.Println(s)
+```
+
+Quote string to ASCII:
+```
+	s := strconv.QuoteToASCII(`"To Do" list ☺`)
+	fmt.Println(s)
+```
+
+# strings
+https://pkg.go.dev/strings
+
+
+Builder:
+```
+	var b strings.Builder
+	for i := 0; i < 3; i++ {
+		b.WriteString(fmt.Sprintf("hey %d, ", i))
+	}
+	fmt.Println(b.String())
+```
+
+Contains:
+```
+	s := "hello world"
+	fmt.Println(strings.Contains(s, "ello"))
+```
+
+Replace:
+```
+	s := "hello world"
+	fmt.Println(strings.Replace(s, "world", "golang", -1))
+```
+
+To upper:
+```
+	s := "hello world"
+	fmt.Println(strings.ToUpper(s))
+```
+
+Trim space:
+```
+	s := "   hello world   "
+	fmt.Printf("'%s'\n", strings.TrimSpace(s))
+```
+
+# sync
+https://pkg.go.dev/sync
+
+Wait group:
+```
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println("goroutine")
+	}()
+	wg.Wait()
+	fmt.Println("main goroutine done")
+```
+
+RWMutex (anonymous field):
+```
+type BankAccount struct {
+	sync.RWMutex
+	Balance int64
+}
+
+func (b *BankAccount) Withdraw(amount int64) {
+	b.RWMutex.Lock()
+	b.Balance += amount
+	b.RWMutex.Unlock()
+}
+
+func (b *BankAccount) PrintBalance() {
+	b.RWMutex.RLock()
+	fmt.Println(b.Balance)
+	b.RWMutex.RUnlock()
+}
+```
+
+# test
+https://pkg.go.dev/testing
+
+* Test:
+```
+//add_test.go
+func TestAdd(t *testing.T) {
+	got := Add(1, 2)
+	const expect = 3
+	if got != 3 {
+		t.Errorf("expected %d, got %d", expect, got)
+	}
+}
+
+```
+
+* Subtests:
+```
+// add_test.go
+func TestAdd(t *testing.T) {
+	t.Run("case 1", func(t *testing.T) {
+		got := Add(1, 2)
+		const expect = 3
+		if got != expect {
+			t.Errorf("expected %d, got %d", expect, got)
+		}
+
+	})
+	t.Run("case 2", func(t *testing.T) {
+		got := Add(2, 2)
+		const expect = 4
+		if got != expect {
+			t.Errorf("expected %d, got %d", expect, got)
+		}
+
+	})
+}
+
+```
+
+* Parallel tests:
+```
+// add_test.go
+func TestAdd(t *testing.T) {
+	t.Parallel()
+	//test code...
+}
+
+func TestAddMultiply(t *testing.T) {
+	t.Parallel()
+	//test code...
+}
+
+```
+
+* Benchmark:
+```
+// add_test.go
+func BenchmarkAdd(b *testing.B) {
+	for range b.N {
+		Add(1, 2)
+	}
+}
+
+```
