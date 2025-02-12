@@ -1363,3 +1363,81 @@ func BenchmarkAdd(b *testing.B) {
 }
 
 ```
+
+# time
+https://pkg.go.dev/time
+
+
+After:
+```
+	c := make(chan int)
+	select {
+	case v := <-c:
+		fmt.Println(v)
+	case <-time.After(5 * time.Second):
+		fmt.Println("timeout!!")
+	}
+```
+
+Subtract time:
+```
+	t0 := time.Now()
+	time.Sleep(1 * time.Second)
+	t1 := time.Now()
+	fmt.Println("elapsed ", t1.Sub(t0))
+```
+
+Add time:
+```
+	t := time.Now()
+	t = t.Add(time.Hour * 2)
+```
+
+Tick
+```
+	c := time.Tick(time.Second)
+	for next := range c {
+		fmt.Println(next)
+	}
+```
+
+Sleep:
+```
+	time.Sleep(500 * time.Millisecond)
+```
+
+Unix time:
+```
+	fmt.Println(time.Now().Unix())
+```
+
+# unicode
+https://pkg.go.dev/unicode
+
+Is digit:
+```
+	fmt.Println(unicode.IsDigit('4'))
+```
+
+# unicode/utf8
+https://pkg.go.dev/unicode/utf8
+
+Rune count:
+```
+	str := "Hello, 世界"
+	fmt.Println("bytes ", len(str))
+	fmt.Println("runes ", utf8.RuneCountInString(str))
+```
+
+Valid string:
+```
+	valid := "Hello, 世界"
+	invalid := string([]byte{0xff, 0xfe, 0xfd})
+	fmt.Println(utf8.ValidString(valid))
+	fmt.Println(utf8.ValidString(invalid))
+```
+
+Rune len:
+```
+	fmt.Println(utf8.RuneLen('界'))
+```
